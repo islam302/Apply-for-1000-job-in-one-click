@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
@@ -7,10 +8,12 @@ from selenium import webdriver
 from random import randint
 import pandas as pd
 import requests
+import random
 import json
 import time
 import sys
 import os
+
 
 class LMSBot:
 
@@ -38,17 +41,28 @@ class LMSBot:
             accept1 = self.driver.find_element(By.XPATH, '//*[@id="btnYes"]')
             accept1.click()
             time.sleep(3)
-        except:
+        except :
             pass
 
-    def get_subjects(self):
-        ul = self.driver.find_element(By.CSS_SELECTOR, '.portletList-img.courseListing.coursefakeclass')
-        li = ul.find_elements(By.TAG_NAME, 'li')
-        links = {}
-        for element in li:
-            links[element.find_element(By.TAG_NAME, 'a').text] = element.find_element(By.TAG_NAME,
-                                                                                        'a').get_attribute('href')
-        return links
+    # def get_subjects(self):
+    #     ul = self.driver.find_element(By.CSS_SELECTOR, '.portletList-img.courseListing.coursefakeclass')
+    #     li = ul.find_elements(By.TAG_NAME, 'li')
+    #     links = {}
+    #     for element in li:
+    #         links[element.find_element(By.TAG_NAME, 'a').text] = element.find_element(By.TAG_NAME,
+    #                                                                                   'a').get_attribute('href')
+    #     return links
+
+    def get_subjects(self) -> list:
+        div = WebDriverWait(self.driver, 10).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, '.portletList-img.courseListing.coursefakeclass')))
+        links = div.find_elements(By.TAG_NAME, "a")
+        subjects = []
+        for link in links:
+            subject_name = link.text
+            subject_url = link.get_attribute("href")
+            subjects.append({"name": subject_name, "url": subject_url})
+        return subjects
 
     def classes_links(self) -> list:
         time.sleep(2)
@@ -83,13 +97,17 @@ class LMSBot:
                 div = element.find_element(By.CSS_SELECTOR, '.item.clearfix')
                 l = div.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').get_attribute('href')
                 s = div.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').find_element(By.TAG_NAME,
-                                                                                                     'span').text
+                                                                                                    'span').text
                 links.append({"link": l, "label": s})
             except Exception as e:
                 pass
         return links
 
     def watch_video(self, link):
+        try:
+            self.check_secure_connection_error()
+        except:
+            pass
         try:
             self.driver.get(link)
             video_link = self.driver.find_element(By.ID, 'content_listContainer').find_elements(By.TAG_NAME, 'li')[3] \
@@ -104,7 +122,7 @@ class LMSBot:
 
             if play_button:
                 play_button.click()
-                time.sleep(7)
+                time.sleep(random.randint(6, 7))
                 return True
             else:
                 return False
@@ -113,17 +131,21 @@ class LMSBot:
 
     def listen_audio(self, link):
         try:
+            self.check_secure_connection_error()
+        except:
+            pass
+        try:
             self.driver.get(link)
+            third_item_link = self.driver.find_element(By.ID, 'content_listContainer') \
+                .find_elements(By.TAG_NAME, 'li')[2] \
+                .find_element(By.TAG_NAME, 'a').get_attribute('href')
+            self.driver.get(third_item_link)
 
-            self.driver.get(
-                self.driver.find_element(By.ID, 'content_listContainer').find_elements(By.TAG_NAME, 'li')[2]
-                    .find_element(By.TAG_NAME, 'a').get_attribute('href'))
-
-            play = WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.TAG_NAME, "video"))
-                    )
-            if play:
-                time.sleep(7)
+            play_button = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "video"))
+            )
+            if play_button:
+                time.sleep(random.randint(6, 7))
                 return True
         except Exception as e:
             return False
@@ -150,56 +172,63 @@ class LMSBot:
 
             df.to_csv("Login_Report.csv", index=False, encoding="utf-8-sig")
         except Exception as e:
-            pass
+            print(f"حدث خطأ: {str(e)}")
 
     def report(self, username, inter):
         try:
-            file_path = "REPORT.csv"
-            file_exists = os.path.isfile(file_path)
-
-            if file_exists:
-                df = pd.read_csv(file_path, encoding="utf-8-sig")
+            file_path = "REPORT.xlsx"
+            if os.path.isfile(file_path):
+                wb = load_workbook(file_path)
+                ws = wb.active
             else:
-                df = pd.DataFrame(columns=["اسم المستخدم", "الحالة"])
+                wb = Workbook()
+                ws = wb.active
+                ws.append(["اسم المستخدم", "الحالة"])
 
-            if inter:
-                if username in df['اسم المستخدم'].values:
-                    df = df[df['اسم المستخدم'] != username]
+            username_exists = False
+            for row in ws.iter_rows(values_only=True):
+                if row[0] == username:
+                    row = [username] + inter
+                    username_exists = True
+                    break
 
-                error_dict = {"اسم المستخدم": username}
-                for n, error_text in enumerate(inter, start=1):
-                    text_parts = error_text.split(":")
-                    key = f"{n}"
-                    text = ':'.join(text_parts[1:]).strip()
-                    error_dict[key] = text
-                df = pd.concat([df, pd.DataFrame(error_dict, index=[0])], ignore_index=True)
-
-            else:
-                text = "هذا الحساب جيد".split(":")[0].strip()
-                if username in df['اسم المستخدم'].values:
-                    df = df[df['اسم المستخدم'] != username]
-
-                df = pd.concat([df, pd.DataFrame({"اسم المستخدم": [username], "الحالة": [text]})],
-                               ignore_index=True)
-            df.to_csv(file_path, mode='w', index=False, encoding="utf-8-sig")
+            if not username_exists:
+                if inter:
+                    row = [username] + inter
+                else:
+                    row = [username, "هذا الحساب جيد"]
+                ws.append(row)
+            wb.save(file_path)
 
         except Exception as e:
-            pass
+            return False
+
+    def check_secure_connection_error(self):
+        error_message_element = WebDriverWait(self.driver, 5).until(
+            EC.presence_of_element_located(
+                (By.XPATH, "//h1[contains(text(),'This site can't provide a secure connection')]"))
+        )
+        if error_message_element:
+            logging.error('There is an error here. Please try again')
+            time.sleep(3)
+            self.driver.quit()
+            sys.exit(1)
 
     def main(self, number=0):
         users = self.data()
         if not users:
-            print("check your users.xlsx file ")
+            print("Check your users.xlsx file")
             return False
-        self.start_driver()
 
         for username, password in users.items():
             list_error = []
+            self.start_driver()
             self.login(username, password)
 
             try:
                 if self.driver.current_url == "https://bblms.kfu.edu.sa/webapps/login/":
                     print(f"Credentials for {username} are incorrect. Skipping...")
+                    self.driver.quit()
                     self.login_report(username)
                     continue
             except TimeoutException:
@@ -213,40 +242,47 @@ class LMSBot:
                 pass
 
             subjects = self.get_subjects()
-
-            for label_S, subject in subjects.items():
-                self.driver.get(subject)
+            for subject in subjects:
+                subject_name = subject["name"]
+                subject_href = subject["url"]
+                self.driver.get(subject_href)
 
                 for link in self.classes_links()[-number:]:
                     lecture_links = self.get_units_links(link)
                     self.driver.refresh()
 
-                    try:
-                        for inner_lecture in lecture_links:
-                            audio_available = self.listen_audio(inner_lecture['link'])
+                    for inner_lecture in lecture_links:
 
-                            if not audio_available:
-                                video_available = self.watch_video(inner_lecture['link'])
+                        audio_available = self.listen_audio(inner_lecture['link'])
+                        if not audio_available:
+                            video_available = self.watch_video(inner_lecture['link'])
 
-                                if video_available:
-                                    list_error.append(
-                                        f"{label_S} >> {inner_lecture['label']} لا يعمل (الملف الصوتي) ولكن يعمل الفيديو")
-                                else:
-                                    list_error.append(
-                                        f"{label_S} >> {inner_lecture['label']} لا يعمل (الملف الصوتي والفيديو)")
-
-                    except Exception as outer_error:
-                        list_error.append(
-                            f"{label_S} >> {inner_lecture['label']} لا يعمل (الملف الصوتي والفيديو)")
+                            if video_available:
+                                list_error.append(
+                                    f"{subject_name} >> {inner_lecture['label']} لا يعمل (الملف الصوتي) ولكن يعمل الفيديو")
+                            else:
+                                print(f'There is a Problem in this user : {username}')
+                                list_error.append(
+                                    f"{subject_name} >> {inner_lecture['label']} لا يعمل (الملف الصوتي والفيديو)")
+                                self.driver.quit()
+                                self.report(username, list_error)
+                                time.sleep(5)
+                                exit()
 
             self.logout()
             self.report(username, list_error)
-            print(f"User {username} is done...")
+            print(f"User {username}  done...")
+            self.driver.quit()
+            time.sleep(5)
+
+        print('All users Done, Have a nice day')
+        time.sleep(2)
+        self.driver.quit()
 
     @staticmethod
     def data():
         try:
-            data = pd.read_excel('users.xlsx')
+            data = pd.read_excel('users1.xlsx')
             collage_numbers = data['الرقم الجامعي'].tolist()
             paswordat = data['الرقم السري'].tolist()
             usernames = collage_numbers
@@ -259,7 +295,7 @@ class LMSBot:
 
 if __name__ == '__main__':
     bot = LMSBot()
-    use = input("1- Start all Lectures ?\n2- Specific Classes ?\n ")
+    use = input("1- Start all Lectures ?\n2- Specific Classes ?\n")
     if use == "1":
         try:
             bot.main()
@@ -267,7 +303,6 @@ if __name__ == '__main__':
             print('There is something Wrong Please try again')
     elif use == "2":
         try:
-            time.sleep(1)
             x = int(input('Enter The Number Of Classes : \n'))
             bot.main(x)
         except:
