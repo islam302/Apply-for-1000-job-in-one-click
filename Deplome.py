@@ -40,7 +40,12 @@ class LMSBot:
             password_field = self.driver.find_element(By.XPATH, '//*[@id="password"]')
             password_field.send_keys(password)
 
-            login_button = self.driver.find_element(By.XPATH, "//button[contains(text(), 'تسجيل الدخول')]")
+            wait = WebDriverWait(self.driver, 10)
+            login_button = wait.until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'تسجيل الدخول')]")))
+
+            login_button.click()
+            time.sleep(1)
             login_button.click()
 
             accept1 = self.driver.find_element(By.XPATH, '//*[@id="btnYes"]')
@@ -87,147 +92,6 @@ class LMSBot:
                 continue
         return links
 
-    # def get_units_links(self, link):
-    #     self.driver.get(link)
-    #     ul = self.driver.find_element(By.XPATH, '//*[@id="content_listContainer"]')
-    #     li = ul.find_elements(By.TAG_NAME, 'li')
-    #     links = []
-    #     for element in li:
-    #         try:
-    #             div = element.find_element(By.CSS_SELECTOR, '.item.clearfix')
-    #             label = div.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').text
-    #             if 'التقييم الذاتي' not in label:
-    #                 l = div.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').get_attribute('href')
-    #                 links.append({"link": l, "label": label})
-    #         except Exception as e:
-    #             pass
-    #     return links
-
-    # def get_units_links(self, link):
-    #     self.driver.get(link)
-    #     ul = self.driver.find_element(By.XPATH, '//*[@id="content_listContainer"]')
-    #     li = ul.find_elements(By.TAG_NAME, 'li')
-    #     links = []
-    #
-    #     for element in li:
-    #         try:
-    #             div = element.find_element(By.CSS_SELECTOR, '.item.clearfix')
-    #             label = div.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').text
-    #
-    #             if 'التقييم الذاتي' not in label:
-    #                 l = div.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').get_attribute('href')
-    #                 if self.is_unit_divided(l):
-    #                     links.extend(self.get_divided_unit_links(l))
-    #                 else:
-    #                     links.append({"link": l, "label": label})
-    #
-    #         except Exception as e:
-    #             print(f"Error processing element: {e}")
-    #             pass
-    #
-    #     return links
-    #
-    # def is_unit_divided(self, unit_link):
-    #     self.driver.get(unit_link)
-    #     try:
-    #         ul_parts = self.driver.find_element(By.XPATH, '//*[@id="content_listContainer"]')
-    #         li_parts = ul_parts.find_elements(By.TAG_NAME, 'li')
-    #
-    #         for part in li_parts:
-    #             part_label = part.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').text
-    #             if 'الجزء' in part_label:  # تحقق مما إذا كانت الوحدة مجزأة
-    #                 return True
-    #
-    #     except Exception as e:
-    #         print(f"Error checking if unit is divided: {e}")
-    #
-    #     return False
-    #
-    # def get_divided_unit_links(self, unit_link):
-    #     self.driver.get(unit_link)
-    #     links = []
-    #     try:
-    #         ul_parts = self.driver.find_element(By.XPATH, '//*[@id="content_listContainer"]')
-    #         li_parts = ul_parts.find_elements(By.TAG_NAME, 'li')
-    #
-    #         for part in li_parts:
-    #             part_label = part.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').text
-    #             part_link = part.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').get_attribute('href')
-    #             links.append({"link": part_link, "label": part_label})
-    #
-    #     except Exception as e:
-    #         print(f"Error retrieving divided unit links: {e}")
-    #
-    #     return links
-    #
-
-    # def process_all_units(self, lecture_link):
-    #     all_processed_links = []
-    #     unit_links = self.get_units_links(lecture_link)
-    #     for unit_link in unit_links:
-    #         processed_unit_links = self.check_if_unit_has_parts(unit_link)
-    #         all_processed_links.extend(processed_unit_links)
-    #     return all_processed_links
-    #
-    # def check_if_unit_has_parts(self, unit_link):
-    #     try:
-    #         self.driver.get(unit_link)
-    #
-    #         # Check if the unit has parts by looking for the content list container
-    #         ul_parts = WebDriverWait(self.driver, 10).until(
-    #             EC.presence_of_element_located((By.XPATH, '//*[@id="content_listContainer"]'))
-    #         )
-    #
-    #         # If found, extract all 'li' elements (parts)
-    #         li_parts = ul_parts.find_elements(By.TAG_NAME, 'li')
-    #         part_links = []
-    #
-    #         for part in li_parts:
-    #             try:
-    #                 # Extract the label of the part (e.g., الفصل الاول - الوحدة الأولى - الجزء الأول)
-    #                 part_label = part.find_element(By.TAG_NAME, 'h3').find_element(By.TAG_NAME, 'a').text
-    #                 if 'الجزء' in part_label:
-    #                     # Get the part link (href)
-    #                     part_link = part.find_element(By.TAG_NAME, 'a').get_attribute('href')
-    #                     part_links.append(part_link)
-    #             except NoSuchElementException:
-    #                 continue
-    #
-    #         # If parts exist, return their links; if no parts, return the original unit link
-    #         return part_links if part_links else [unit_link]
-    #
-    #     except TimeoutException:
-    #         print(f"Timed out waiting for unit page to load: {unit_link}")
-    #         return [unit_link]
-    #
-    # def get_units_links(self, lecture_page_link):
-    #     try:
-    #         self.driver.get(lecture_page_link)
-    #         WebDriverWait(self.driver, 10).until(
-    #             EC.presence_of_element_located((By.CSS_SELECTOR, '.item.clearfix'))
-    #         )
-    #         elements = self.driver.find_elements(By.CSS_SELECTOR, '.item.clearfix')
-    #         unit_links = []
-    #
-    #         for element in elements:
-    #             try:
-    #                 # Check the unit name (text) before getting the link
-    #                 unit_name = element.text
-    #                 if "التقييم الذاتي" in unit_name:
-    #                     continue
-    #
-    #                 # Get the unit link if it doesn't contain "التقييم الذاتي"
-    #                 unit_link = element.find_element(By.TAG_NAME, 'a').get_attribute('href')
-    #                 unit_links.append(unit_link)
-    #
-    #             except (NoSuchElementException, StaleElementReferenceException) as e:
-    #                 continue
-    #
-    #         return unit_links
-    #
-    #     except TimeoutException:
-    #         return []
-
     def process_all_units(self, lecture_link):
         all_processed_links = []
         unit_links = self.get_units_links(lecture_link)
@@ -270,34 +134,6 @@ class LMSBot:
         except TimeoutException:
             print(f"Timed out waiting for unit page to load: {unit_link}")
             return [(unit_link, unit_name)]  # Return with the original name on timeout
-
-    # def get_units_links(self, lecture_page_link):
-    #     try:
-    #         self.driver.get(lecture_page_link)
-    #         WebDriverWait(self.driver, 10).until(
-    #             EC.presence_of_element_located((By.CSS_SELECTOR, '.item.clearfix'))
-    #         )
-    #         elements = self.driver.find_elements(By.CSS_SELECTOR, '.item.clearfix')
-    #         unit_links = []
-    #
-    #         for element in elements:
-    #             try:
-    #                 # Check the unit name (text) before getting the link
-    #                 unit_name = element.text
-    #                 if "التقييم الذاتي" in unit_name:
-    #                     continue
-    #
-    #                 # Get the unit link if it doesn't contain "التقييم الذاتي"
-    #                 unit_link = element.find_element(By.TAG_NAME, 'a').get_attribute('href')
-    #                 unit_links.append((unit_link, unit_name))  # Store as tuple (link, name)
-    #
-    #             except (NoSuchElementException, StaleElementReferenceException) as e:
-    #                 continue
-    #
-    #         return unit_links
-    #
-    #     except TimeoutException:
-    #         return []
 
     def get_units_links(self, lecture_page_link):
         try:
@@ -545,8 +381,10 @@ if __name__ == '__main__':
     bot = LMSBot()
     use = input("1- Start all Lectures ?\n2- Specific Classes ?\n")
     if use == "1":
-        bot.main()
-
+        try:
+            bot.main()
+        except:
+            print("There is an Error please try again")
     elif use == "2":
         x = int(input('Enter The Number Of Classes : \n'))
         try:
